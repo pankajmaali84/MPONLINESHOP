@@ -14,5 +14,13 @@ export const DarkModeProvider = ({ children }) => {
     localStorage.setItem("darkMode", JSON.stringify(darkMode));
   }, [darkMode]);
 
+<<<<<<< HEAD
   return children;
+=======
+  return (
+    <DarkModeContext.Provider value={{ darkMode, toggleDarkMode }}>
+      {children}
+    </DarkModeContext.Provider>
+  );
+>>>>>>> c3540197e2bbe8cac0011fc08b3e5e83b82e2c2b
 };

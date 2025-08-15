@@ -4,8 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+<<<<<<< HEAD
     "dev": "vite --host",
     "build": "vite build",
+=======
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+>>>>>>> c3540197e2bbe8cac0011fc08b3e5e83b82e2c2b
     "preview": "vite preview"
   },
   "dependencies": {

@@ -172,7 +172,11 @@ const Login = () => {
             <p className="mt-6 text-sm text-center text-gray-400">
               Don’t have an account?{" "}
               <Link
+<<<<<<< HEAD
                 to="/register"
+=======
+                to="/"
+>>>>>>> c3540197e2bbe8cac0011fc08b3e5e83b82e2c2b
                 className="relative inline-block text-blue-400 transition-all duration-300 hover:text-blue-500 hover:scale-100"
               >
                 <span className="relative z-10 font-semibold">Register</span>
