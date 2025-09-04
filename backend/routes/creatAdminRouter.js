@@ -3,9 +3,11 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const protect = require('../middleware/authMiddleware');
+const adminMiddleware = require('../middleware/isAdmin');
 
-// Temporary: Make a user admin by email
-router.put('/make-admin/:email', async (req, res) => {
+// Make a user admin by email (admin-only)
+router.put('/make-admin/:email', protect, adminMiddleware, async (req, res) => {
   try {
     const user = await User.findOne({ email: req.params.email });
 

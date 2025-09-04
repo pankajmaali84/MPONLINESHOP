@@ -1,21 +1,37 @@
-
 const PanCardForm = require('../models/panCardForm.js');
 
 exports.applyForPanCard = async (req, res) => {
-  const { name, parentName, dob,gender,contactNumber, email,aadhar,address } = req.body;
+  const {
+    name,
+    parentName,
+    motherName,
+    dob,
+    gender,
+    contactNumber,
+    email,
+    aadhar,
+    address,
+    serviceTitle,
+  } = req.body;
+
+  // Basic validation
+  if (!name || !parentName || !dob || !gender || !contactNumber || !email || !aadhar || !address) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
 
   try {
- 
     const form = await PanCardForm.create({
+      userId: req.user._id,
+      serviceTitle: serviceTitle || 'PAN Application',
       name,
       parentName,
+      motherName,
       dob,
       gender,
       contactNumber,
       email,
       aadhar,
       address,
-      userId: req.user._id
     });
 
     res.status(201).json({
@@ -24,8 +40,8 @@ exports.applyForPanCard = async (req, res) => {
       user: {
         id: req.user._id,
         name: req.user.name,
-        email: req.user.email
-      }
+        email: req.user.email,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: 'Form submission failed', error: error.message });

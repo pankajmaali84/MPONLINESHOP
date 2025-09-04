@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate,Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { showCenterPopup } from './CenterPopup';
+import { LanguageContext } from '../context/LanguageContext.jsx';
 
 const Login = () => {
+  const { t } = useContext(LanguageContext);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -10,9 +14,19 @@ const Login = () => {
   const [message, setMessage] = useState('');
  const navigate = useNavigate();
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: name === 'email' ? value.trim() : value,
+    });
+  };
+
+  const showCenterWelcome = (name = 'User', message = 'Login successful ✅') => {
+    showCenterPopup({
+      title: message,
+      subtitle: `Welcome, <span class=\"font-semibold\">${name}</span> 🎉`,
+      colorClass: 'text-green-400',
+      duration: 1600,
     });
   };
 
@@ -20,62 +34,33 @@ const Login = () => {
     e.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', formData);
+      const API = import.meta.env.VITE_API_URL || window.location.origin;
+      const response = await axios.post(`${API}/api/auth/login`, formData);
       setMessage(response.data.message || 'Login successful');
+      const name = response.data?.user?.name || 'User';
+      showCenterWelcome(name, 'Login successful ✅');
 
-      // Save token if needed:
+      // Save token and notify app about auth change
       localStorage.setItem('token', response.data.token);
+      try { window.dispatchEvent(new Event('auth:changed')); } catch {}
 
       // Redirect or navigate if necessary
       // window.location.href = '/dashboard';
-         navigate('/home');
+        // Delay navigation so the success message is visible first
+        setTimeout(() => {
+          navigate('/home');
+        }, 1700);
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Login failed');
+      const msg = error.response?.data?.message || 'Login failed';
+      setMessage(msg);
+      toast.error(msg);
     }
   };
 
   return (
-    // <div className="flex items-center justify-center min-h-screen bg-gray-100">
-    //   <form 
-    //     onSubmit={handleSubmit}
-    //     className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm"
-    //   >
-    //     <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
 
-    //     {message && <p className="text-sm text-center text-red-500 mb-4">{message}</p>}
-
-    //     <input
-    //       type="email"
-    //       name="email"
-    //       placeholder="Email"
-    //       className="w-full p-2 border rounded mb-4"
-    //       value={formData.email}
-    //       onChange={handleChange}
-    //       required
-    //     />
-
-    //     <input
-    //       type="password"
-    //       name="password"
-    //       placeholder="Password"
-    //       className="w-full p-2 border rounded mb-4"
-    //       value={formData.password}
-    //       onChange={handleChange}
-    //       required
-    //     />
-
-    //     <button
-    //       type="submit"
-    //       className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
-    //     >
-    //       Login
-    //     </button>
-    //   </form>
-    // </div>
-    <>
-  
-
- <div className="bg-white dark:bg-gray-900">
+<>
+ <div className="dark bg-gray-950 text-gray-100">
       <div className="flex flex-col lg:flex-row min-h-screen">
         {/* Left Side Image */}
         <div
@@ -85,7 +70,7 @@ const Login = () => {
               "url(https://images.unsplash.com/photo-1616763355603-9755a640a287?ixlib=rb-1.2.1&auto=format&fit=crop&w=1470&q=80)",
           }}
         >
-          <div className="flex items-center justify-center h-full px-6 bg-gray-900 bg-opacity-60">
+          <div className="flex items-center justify-center h-full px-6 bg-gradient-to-b from-black/70 to-black/50">
             <div className="transition duration-500 transform hover:scale-105 text-center">
               <h2 className="text-4xl lg:text-5xl font-extrabold text-white animate-bounce">
                 <span className="block">Welcome Back</span>
@@ -101,20 +86,26 @@ const Login = () => {
         </div>
 
         {/* Right Side Login Form */}
-        <div className="flex items-center w-full px-6 py-10 lg:py-0 lg:w-1/3">
-          <div className="flex-1">
+        <div className="flex items-center w-full px-4 sm:px-6 py-10 lg:py-0 lg:w-1/3">
+          <div className="flex-1 max-w-md w-full mx-auto bg-gray-900/60 backdrop-blur rounded-2xl p-6 sm:p-8 shadow-2xl border border-white/5">
             <div className="text-center mb-6">
-              <div className="flex justify-center mb-2">
+              <div className="flex justify-center mb-4">
                 <img
                   className="w-auto h-8"
                   src="https://merakiui.com/images/logo.svg"
                   alt="Logo"
                 />
               </div>
-              <h2 className="text-2xl font-semibold text-gray-700 dark:text-white">
-                Login to your account
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-300">
+              {/* Forgot Password Link */}
+              <div className="mt-2 text-right">
+                <Link to="/forgot-password" className="text-sm text-blue-400 hover:text-blue-300">
+                  Forgot password?
+                </Link>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight">
+                {t('login_to_account')}
+              </h1>
+              <p className="mt-1 text-sm text-gray-300">
                 Access your dashboard and services
               </p>
             </div>
@@ -124,18 +115,22 @@ const Login = () => {
               <div className="relative mt-4">
                 <input
                   type="email"
+                  id="email"
                   name="email"
-                    value={formData.email}
-                    onChange={handleChange}
+                  value={formData.email}
+                  onChange={handleChange}
                   required
-                  className="peer w-full bg-transparent border-b-2 border-gray-300 text-gray-900 dark:text-white placeholder-transparent focus:outline-none focus:border-blue-500 py-2"
+                  autoComplete="email"
+                  inputMode="email"
+                  spellCheck={false}
+                  className="peer w-full bg-transparent border-0 border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-blue-400 focus-visible:outline-none focus:ring-0 focus-visible:ring-0 rounded-none py-2"
                   placeholder="Email address"
                 />
                 <label
                   htmlFor="email"
-                  className="absolute left-0 -top-3.5 text-sm text-gray-600 dark:text-gray-300 transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-3.5 peer-focus:text-sm peer-focus:text-blue-500"
+                  className="absolute left-0 -top-3.5 text-sm text-gray-300 transition-all duration-200 ease-out peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-3.5 peer-focus:text-sm peer-focus:text-blue-400"
                 >
-                  Email Address
+                  {t('email')}
                 </label>
               </div>
 
@@ -143,18 +138,20 @@ const Login = () => {
               <div className="relative mt-6">
                 <input
                   type="password"
+                  id="password"
                   name="password"
-                   value={formData.password}
-                   onChange={handleChange}
+                  value={formData.password}
+                  onChange={handleChange}
                   required
-                  className="peer w-full bg-transparent border-b-2 border-gray-300 text-gray-900 dark:text-white placeholder-transparent focus:outline-none focus:border-blue-500 py-2"
+                  autoComplete="current-password"
+                  className="peer w-full bg-transparent border-0 border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-blue-400 focus-visible:outline-none focus:ring-0 focus-visible:ring-0 rounded-none py-2"
                   placeholder="Password"
                 />
                 <label
                   htmlFor="password"
-                  className="absolute left-0 -top-3.5 text-sm text-gray-600 dark:text-gray-300 transition-all peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-3.5 peer-focus:text-sm peer-focus:text-blue-500"
+                  className="absolute left-0 -top-3.5 text-sm text-gray-300 transition-all duration-200 ease-out peer-placeholder-shown:top-2.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-3.5 peer-focus:text-sm peer-focus:text-blue-400"
                 >
-                  Password
+                  {t('password')}
                 </label>
               </div>
 
@@ -162,24 +159,20 @@ const Login = () => {
               <div className="mt-8 flex justify-center">
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-white/10 backdrop-blur-md text-blue-400 border border-blue-500 rounded-lg font-semibold shadow-md hover:bg-blue-500 hover:text-white transition-all duration-300"
+                  className="px-6 py-3 bg-blue-500/10 text-blue-400 border border-blue-500/60 rounded-lg font-semibold shadow-md hover:bg-blue-500 hover:text-white transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                 >
-                  Login
+                  {t('login')}
                 </button>
               </div>
             </form>
 
-            <p className="mt-6 text-sm text-center text-gray-400">
-              Don’t have an account?{" "}
+            <p className="mt-6 text-sm text-center text-gray-300">
+              {t('dont_have_account')} {" "}
               <Link
-<<<<<<< HEAD
                 to="/register"
-=======
-                to="/"
->>>>>>> c3540197e2bbe8cac0011fc08b3e5e83b82e2c2b
                 className="relative inline-block text-blue-400 transition-all duration-300 hover:text-blue-500 hover:scale-100"
               >
-                <span className="relative z-10 font-semibold">Register</span>
+                <span className="relative z-10 font-semibold">{t('register')}</span>
               </Link>
             </p>
           </div>

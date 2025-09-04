@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const panCardFormSchema = new mongoose.Schema(
+const incomeCertificateFormSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -10,7 +10,7 @@ const panCardFormSchema = new mongoose.Schema(
     },
     serviceTitle: {
       type: String,
-      default: 'PAN Application',
+      default: 'Income Certificate',
       trim: true,
     },
     name: {
@@ -21,38 +21,16 @@ const panCardFormSchema = new mongoose.Schema(
       maxlength: 120,
     },
     parentName: {
-      // Father's name (frontend maps as parentName)
       type: String,
       required: true,
       trim: true,
       minlength: 2,
       maxlength: 120,
     },
-    motherName: {
-      type: String,
-      trim: true,
-      maxlength: 120,
-    },
-    dob: {
-      type: String, // kept as string to match existing usage
+    incomeAmount: {
+      type: Number,
       required: true,
-      trim: true,
-    },
-    gender: {
-      type: String,
-      required: true,
-      enum: ['Male', 'Female', 'Other'],
-    },
-    contactNumber: {
-      type: String,
-      required: true,
-      match: /^[0-9]{10}$/,
-    },
-    email: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
+      min: 35000,
     },
     aadhar: {
       type: String,
@@ -60,11 +38,19 @@ const panCardFormSchema = new mongoose.Schema(
       match: /^[0-9]{12}$/,
       index: true,
     },
-    address: {
+    contactNumber: {
+      type: String,
+      required: true,
+      match: /^[0-9]{10}$/,
+    },
+    samagraId: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 500,
+      match: /^[0-9]{8,9}$/,
+      maxlength: 9,
+      minlength: 8,
+      index: true,
     },
     status: {
       type: String,
@@ -79,8 +65,8 @@ const panCardFormSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'received', ''],
-      default: '',
+      enum: ['pending', 'received'],
+      default: 'pending',
       index: true,
     },
     paymentReceivedAt: {
@@ -90,4 +76,4 @@ const panCardFormSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('PanCardForm', panCardFormSchema);
+module.exports = mongoose.model('IncomeCertificateForm', incomeCertificateFormSchema);

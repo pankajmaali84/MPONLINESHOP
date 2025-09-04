@@ -8,3 +8,13 @@ export const isTokenExpired = (token) => {
     return true; // invalid token means expired
   }
 };
+
+export const getRoleFromToken = (token) => {
+  try {
+    if (!token) return undefined;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload?.role;
+  } catch (err) {
+    return undefined;
+  }
+};

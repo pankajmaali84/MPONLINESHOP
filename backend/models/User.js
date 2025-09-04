@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
   default: 'user'
 }
  // 'user' or 'admin'
-});
+ ,
+ isBlocked: { type: Boolean, default: false }
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

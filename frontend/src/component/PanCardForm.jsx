@@ -21,14 +21,14 @@ export default function StylishForm() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
+      className="min-h-screen flex items-center justify-center bg-cover bg-center p-4 bg-white dark:bg-gray-900 transition-colors"
       style={{
         backgroundImage:
           "url('https://images.unsplash.com/photo-1508780709619-79562169bc64?auto=format&fit=crop&w=1950&q=80')",
       }}
     >
-      <div className="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg">
-        <h2 className="text-3xl font-bold text-center mb-6 text-gray-800">
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-lg transition-colors">
+        <h2 className="text-3xl font-bold text-center mb-6 text-gray-800 dark:text-gray-100">
           User Information
         </h2>
 
@@ -59,10 +59,10 @@ export default function StylishForm() {
                 value={formData[field.name]}
                 onChange={handleChange}
                 placeholder=" "
-                className="peer w-full border-b-2 border-gray-300 bg-transparent px-2 pt-5 pb-2 focus:border-blue-500 focus:outline-none transition-all"
+                className="peer w-full border-b-2 border-gray-300 dark:border-gray-600 bg-transparent px-2 pt-5 pb-2 focus:border-blue-500 focus:outline-none transition-all text-gray-900 dark:text-gray-100"
                 required
               />
-              <label className="absolute left-2 top-2.5 text-gray-500 text-sm transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base peer-focus:top-2.5 peer-focus:text-blue-500 peer-focus:text-sm">
+              <label className="absolute left-2 top-2.5 text-gray-500 dark:text-gray-300 text-sm transition-all peer-placeholder-shown:top-5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base peer-focus:top-2.5 peer-focus:text-blue-500 peer-focus:text-sm">
                 {field.label}
               </label>
             </div>

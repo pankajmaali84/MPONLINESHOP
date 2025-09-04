@@ -1,32 +1,35 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
+import { motion } from "framer-motion";
+import "swiper/css/bundle";
+import { LanguageContext } from "../context/LanguageContext.jsx";
 
 export default function HomeSlider() {
+  const navigate = useNavigate();
+  const { t } = useContext(LanguageContext);
   const slides = [
     {
       image:
         "https://images.pexels.com/photos/3184465/pexels-photo-3184465.jpeg?w=1200&auto=compress&cs=tinysrgb",
-      title: "PAN & Aadhaar Card Services",
-      text: "Apply for PAN or Aadhaar Card easily and quickly with our online services.",
-      button: "Apply Now",
+      title: t('home_slide1_title'),
+      text: t('home_slide1_text'),
+      button: t('home_slide1_button'),
     },
     {
       image:
         "https://images.pexels.com/photos/3183153/pexels-photo-3183153.jpeg?w=1200&auto=compress&cs=tinysrgb",
-      title: "Online Money Transfer",
-      text: "Secure and fast online money transfer for your needs.",
-      button: "Send Money",
+      title: t('home_slide2_title'),
+      text: t('home_slide2_text'),
+      button: t('home_slide2_button'),
     },
     {
       image:
         "https://images.pexels.com/photos/3184454/pexels-photo-3184454.jpeg?w=1200&auto=compress&cs=tinysrgb",
-      title: "All-in-One Online Services",
-      text: "From bill payments to document services, we’ve got you covered.",
-      button: "Explore Services",
+      title: t('home_slide3_title'),
+      text: t('home_slide3_text'),
+      button: t('home_slide3_button'),
     },
   ];
 
@@ -36,7 +39,7 @@ export default function HomeSlider() {
       const img = new Image();
       img.src = slide.image;
     });
-  }, []);
+  }, [slides]);
 
   return (
     <div className="w-full h-screen">
@@ -46,7 +49,6 @@ export default function HomeSlider() {
         pagination={{ clickable: true }}
         autoplay={{ delay: 2500, disableOnInteraction: false }}
         loop
-        preloadImages={true}
         watchSlidesProgress
         className="h-full"
       >
@@ -57,15 +59,29 @@ export default function HomeSlider() {
               style={{ backgroundImage: `url(${slide.image})` }}
             >
               <div className="absolute inset-0 bg-black/50"></div>
-              <div className="relative z-10 text-white p-6 max-w-2xl">
+              <motion.div
+                className="relative z-10 text-white p-6 max-w-2xl"
+                initial={{ opacity: 0, y: 18, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <h2 className="text-3xl md:text-5xl font-bold mb-4">
                   {slide.title}
                 </h2>
                 <p className="text-lg md:text-xl mb-6">{slide.text}</p>
-                <button className="bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 rounded-lg text-lg font-semibold hover:scale-105 transition-transform duration-300">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 px-5 py-2.5 rounded-md text-base font-semibold transition-transform duration-300"
+                  onClick={() => {
+                    if (index === 2) {
+                      navigate("/service");
+                    }
+                  }}
+                >
                   {slide.button}
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             </div>
           </SwiperSlide>
         ))}
