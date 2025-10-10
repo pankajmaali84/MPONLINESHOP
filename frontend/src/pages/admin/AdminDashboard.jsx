@@ -45,7 +45,7 @@ const AdminDashboard = () => {
     if (!email) return;
     try {
       setLoading(true);
-      await axios.put(`${API}/api/creatAdmin/make-admin/${encodeURIComponent(email)}`, {}, authHeader);
+await axios.patch(`${API}/api/admin/users/${encodeURIComponent(email)}/role`, { role: 'admin' }, authHeader);
       alert(t('promote_user'));
       setEmail('');
     } catch (e) {

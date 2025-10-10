@@ -39,6 +39,7 @@ function ApplyGate() {
     </PageTransition>
   );
 }
+console.log("API Base URL:", import.meta.env.VITE_API_URL);
 
 function AppRoot() {
   const { darkMode } = useContext(DarkModeContext);
