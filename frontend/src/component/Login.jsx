@@ -2,8 +2,8 @@ import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate,Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { showCenterPopup } from './CenterPopup';
 import { LanguageContext } from '../context/LanguageContext.jsx';
+import LoadingOverlay from './LoadingOverlay';
 
 const Login = () => {
   const { t } = useContext(LanguageContext);
@@ -12,6 +12,8 @@ const Login = () => {
     password: ''
   });
   const [message, setMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
  const navigate = useNavigate();
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,36 +23,26 @@ const Login = () => {
     });
   };
 
-  const showCenterWelcome = (name = 'User', message = 'Login successful ✅') => {
-    showCenterPopup({
-      title: message,
-      subtitle: `Welcome, <span class=\"font-semibold\">${name}</span> 🎉`,
-      colorClass: 'text-green-400',
-      duration: 1600,
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
       const API = import.meta.env.VITE_API_URL || window.location.origin;
       const response = await axios.post(`${API}/api/auth/login`, formData);
       setMessage(response.data.message || 'Login successful');
-      const name = response.data?.user?.name || 'User';
-      showCenterWelcome(name, 'Login successful ✅');
-
+      
       // Save token and notify app about auth change
       localStorage.setItem('token', response.data.token);
       try { window.dispatchEvent(new Event('auth:changed')); } catch {}
 
-      // Redirect or navigate if necessary
-      // window.location.href = '/dashboard';
-        // Delay navigation so the success message is visible first
-        setTimeout(() => {
-          navigate('/home');
-        }, 1700);
+      // Direct navigation without popup
+      setTimeout(() => {
+        setIsLoading(false);
+        navigate('/home');
+      }, 2000);
     } catch (error) {
+      setIsLoading(false);
       const msg = error.response?.data?.message || 'Login failed';
       setMessage(msg);
       toast.error(msg);
@@ -60,6 +52,14 @@ const Login = () => {
   return (
 
 <>
+      <LoadingOverlay isLoading={isLoading} message="Logging you in..." />
+      
+      {/* Font Awesome CDN */}
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+      />
+      
  <div className="dark bg-gray-950 text-gray-100">
       <div className="flex flex-col lg:flex-row min-h-screen">
         {/* Left Side Image */}
@@ -137,14 +137,14 @@ const Login = () => {
               {/* Password Field */}
               <div className="relative mt-6">
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   required
                   autoComplete="current-password"
-                  className="peer w-full bg-transparent border-0 border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-blue-400 focus-visible:outline-none focus:ring-0 focus-visible:ring-0 rounded-none py-2"
+                  className="peer w-full bg-transparent border-0 border-b-2 border-gray-600 text-white placeholder-transparent focus:outline-none focus:border-blue-400 focus-visible:outline-none focus:ring-0 focus-visible:ring-0 rounded-none py-2 pr-10"
                   placeholder="Password"
                 />
                 <label
@@ -153,6 +153,15 @@ const Login = () => {
                 >
                   {t('password')}
                 </label>
+                
+                {/* Password Show/Hide Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors duration-200 focus:outline-none"
+                >
+                  <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-lg`}></i>
+                </button>
               </div>
 
               {/* Login Button */}

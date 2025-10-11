@@ -1,13 +1,14 @@
 import React, { useState, useContext } from "react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { showCenterPopup } from "./CenterPopup";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { LanguageContext } from "../context/LanguageContext.jsx";
+import LoadingOverlay from './LoadingOverlay';
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { t } = useContext(LanguageContext);
   const [form, setForm] = useState({
     name: "",
@@ -21,17 +22,9 @@ const Register = () => {
     setForm({ ...form, [name]: name === 'email' ? value.trim() : value });
   };
 
-  const showCenterWelcome = (name = 'User', message = 'Registration successful ✅') => {
-    showCenterPopup({
-      title: message,
-      subtitle: `Welcome, <span class=\"font-semibold\">${name}</span> 🎉`,
-      colorClass: 'text-green-400',
-      duration: 1600,
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     
     try {
       const API = import.meta.env.VITE_API_URL || window.location.origin;
@@ -40,21 +33,22 @@ const Register = () => {
         form
       );
 
-
       const token = response.data.token;
-  
-
       localStorage.setItem("token", token);
       try { window.dispatchEvent(new Event('auth:changed')); } catch {}
   
       console.log("Server response:", response.data);
-      const name = response.data?.user?.name || form.name || 'User';
-      showCenterWelcome(name, "Registration successful ✅");
-
+      
       // Optional: clear the form
       setForm({ name: "", email: "", password: "" });
-      navigate("/home");
+      
+      // Direct navigation without popup
+      setTimeout(() => {
+        setIsLoading(false);
+        navigate("/home");
+      }, 2000);
     } catch (error) {
+      setIsLoading(false);
       console.error(
         "Registration error:",
         error.response?.data || error.message
@@ -66,6 +60,8 @@ const Register = () => {
 
   return (
     <>
+      <LoadingOverlay isLoading={isLoading} message="Creating your account..." />
+      
       <style>
         {`
     input:-webkit-autofill {
