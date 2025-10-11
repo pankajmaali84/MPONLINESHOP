@@ -1,9 +1,9 @@
 const IncomeCertificateForm = require('../models/incomeCertificateForm');
 
 exports.applyForIncomeCertificate = async (req, res) => {
-  const { name, parentName, incomeAmount, aadhar, contactNumber, samagraId, serviceTitle } = req.body;
+  const { name, parentName, incomeAmount, aadhar, contactNumber, samagraId, email, address, serviceTitle } = req.body;
 
-  if (!name || !parentName || incomeAmount == null || !aadhar || !contactNumber || !samagraId) {
+  if (!name || !parentName || incomeAmount == null || !aadhar || !contactNumber || !samagraId || !email || !address) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
@@ -32,6 +32,8 @@ exports.applyForIncomeCertificate = async (req, res) => {
       incomeAmount: Number(incomeAmount),
       aadhar,
       contactNumber,
+      email,
+      address,
       samagraId,
     });
 
