@@ -45,14 +45,23 @@ app.use('/api/creatAdmin',require("./routes/creatAdminRouter"))
 app.use('/api/income', require('./routes/incomeRoutes'))
 
 const PORT = process.env.PORT || 5000;
-// Serve frontend in production
-if (NODE_ENV === 'production') {
-  const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
-  app.use(express.static(frontendDist));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
-  });
-}
+// Serve frontend in production (commented out for development)
+// if (NODE_ENV === 'production') {
+//   const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
+//   app.use(express.static(frontendDist));
+//   app.enable('strict routing');
+//   // Handle client-side routing
+//   app.get('*', (req, res) => {
+//     // Don't serve index.html for API routes
+//     if (req.path.startsWith('/api/')) {
+//       return res.status(404).json({ message: 'API route not found' });
+//     }
+//     res.sendFile(path.resolve(frontendDist, 'index.html'));
+//   });
+// }
+
+
+
 
 // Global error handler (basic)
 // eslint-disable-next-line no-unused-vars
