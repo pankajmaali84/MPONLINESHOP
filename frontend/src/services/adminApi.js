@@ -1,8 +1,13 @@
 
 import axios from 'axios';
 
+// const api = axios.create({
+//   baseURL: '/api/admin',
+// });
+
 const api = axios.create({
-  baseURL: '/api/admin',
+  baseURL: `${import.meta.env.VITE_API_URL}/api/admin`,
+  withCredentials: true, // important for token/cookie if used
 });
 
 api.interceptors.request.use((config) => {
