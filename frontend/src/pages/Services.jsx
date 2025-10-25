@@ -25,11 +25,19 @@ export const Services = () => {
       icon: <FaUserCheck className="text-purple-500 text-4xl" />,
       title: t('service_caste_title'),
       description: t('service_caste_desc'),
+      type: 'caste',
     },
     {
       icon: <FaUniversity className="text-orange-500 text-4xl" />,
       title: t('service_domicile_title'),
       description: t('service_domicile_desc'),
+      type: 'domicile',
+    },
+    {
+      icon: <FaHome className="text-red-500 text-4xl" />,
+      title: t('service_property_title'),
+      description: t('service_property_desc'),
+      type: 'property',
     },
     {
       icon: <FaMobileAlt className="text-pink-500 text-4xl" />,
@@ -40,11 +48,6 @@ export const Services = () => {
       icon: <FaMoneyBillWave className="text-teal-500 text-4xl" />,
       title: t('service_bills_title'),
       description: t('service_bills_desc'),
-    },
-    {
-      icon: <FaHome className="text-red-500 text-4xl" />,
-      title: t('service_property_title'),
-      description: t('service_property_desc'),
     },
     {
       icon: <FaLaptopHouse className="text-indigo-500 text-4xl" />,
@@ -100,12 +103,10 @@ export const Services = () => {
                 onClick={() => {
                   toast.success(`${t('apply_started')} ${service.title}`);
                   const state = { serviceTitle: `${service.title} ${t('application_suffix')}` };
-                  if (service.type === 'pan') {
-                    navigate('/apply?type=pan', { state });
-                  } else if (service.type === 'income') {
-                    navigate('/apply?type=income', { state });
+                  if (service.type) {
+                    navigate(`/apply?type=${service.type}`, { state });
                   } else {
-                    navigate('/service');
+                    toast.info('This service will be available soon!');
                   }
                 }}
                 className="inline-flex items-center justify-center px-4 py-2 mt-1 w-full rounded-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50"

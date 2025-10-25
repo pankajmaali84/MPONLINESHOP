@@ -40,9 +40,12 @@ app.use(cors({
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/profile',require('./routes/userProfileRoutes'))
 app.use('/api/pan', require('./routes/panRoutes'));
+app.use('/api/income', require('./routes/incomeRoutes'));
+app.use('/api/caste', require('./routes/casteRoutes'));
+app.use('/api/domicile', require('./routes/domicileRoutes'));
+app.use('/api/property', require('./routes/propertyRoutes'));
 app.use('/api/admin', require("./routes/adminRouter"));
 app.use('/api/creatAdmin',require("./routes/creatAdminRouter"))
-app.use('/api/income', require('./routes/incomeRoutes'))
 
 const PORT = process.env.PORT || 5000;
 // Serve frontend in production (commented out for development)

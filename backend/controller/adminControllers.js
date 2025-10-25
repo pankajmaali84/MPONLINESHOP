@@ -1,21 +1,27 @@
 const PanCardForm = require('../models/panCardForm');
 const IncomeCertificateForm = require('../models/incomeCertificateForm');
+const CasteCertificateForm = require('../models/casteCertificateForm');
+const DomicileCertificateForm = require('../models/domicileCertificateForm');
+const PropertyRegistrationForm = require('../models/propertyRegistrationForm');
 const { sendEmail } = require('../utils/mailer');
 const User = require('../models/User');
 
 exports.getAllPanForms = async (req, res) => {
   try {
-    const [panForms, incomeForms] = await Promise.all([
+    const [panForms, incomeForms, casteForms, domicileForms, propertyForms] = await Promise.all([
       PanCardForm.find().populate('userId', 'name email'),
-      IncomeCertificateForm.find().populate('userId', 'name email')
+      IncomeCertificateForm.find().populate('userId', 'name email'),
+      CasteCertificateForm.find().populate('userId', 'name email'),
+      DomicileCertificateForm.find().populate('userId', 'name email'),
+      PropertyRegistrationForm.find().populate('userId', 'name email'),
     ]);
 
     const normalize = (docs, type) =>
       docs.map((d) => ({
         _id: d._id,
         service: d.serviceTitle || type,
-        applicantName: d.name,
-        contactNumber: d.contactNumber || '',
+        applicantName: d.name || d.ownerName,
+        contactNumber: d.contactNumber || d.ownerContactNumber || '',
         createdAt: d.createdAt,
         status: d.status,
         user: d.userId ? { name: d.userId.name, email: d.userId.email } : undefined,
@@ -26,6 +32,9 @@ exports.getAllPanForms = async (req, res) => {
     const forms = [
       ...normalize(panForms, 'PAN Application'),
       ...normalize(incomeForms, 'Income Certificate'),
+      ...normalize(casteForms, 'Caste Certificate'),
+      ...normalize(domicileForms, 'Domicile Certificate'),
+      ...normalize(propertyForms, 'Property Registration'),
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({ forms });
@@ -41,12 +50,24 @@ exports.updateFormStatus = async (req, res) => {
   try {
     if (!status || typeof status !== 'string') return res.status(400).json({ message: 'Status is required' });
 
-    // Try PAN first
+    // Try finding in all models
     let doc = await PanCardForm.findById(id);
     let model = 'PAN';
     if (!doc) {
       doc = await IncomeCertificateForm.findById(id);
       model = 'INCOME';
+    }
+    if (!doc) {
+      doc = await CasteCertificateForm.findById(id);
+      model = 'CASTE';
+    }
+    if (!doc) {
+      doc = await DomicileCertificateForm.findById(id);
+      model = 'DOMICILE';
+    }
+    if (!doc) {
+      doc = await PropertyRegistrationForm.findById(id);
+      model = 'PROPERTY';
     }
     if (!doc) return res.status(404).json({ message: 'Form not found' });
 
@@ -80,27 +101,40 @@ exports.getFormById = async (req, res) => {
       form = await IncomeCertificateForm.findById(id).populate('userId', 'name email');
       type = 'INCOME';
     }
+    if (!form) {
+      form = await CasteCertificateForm.findById(id).populate('userId', 'name email');
+      type = 'CASTE';
+    }
+    if (!form) {
+      form = await DomicileCertificateForm.findById(id).populate('userId', 'name email');
+      type = 'DOMICILE';
+    }
+    if (!form) {
+      form = await PropertyRegistrationForm.findById(id).populate('userId', 'name email');
+      type = 'PROPERTY';
+    }
     if (!form) return res.status(404).json({ message: 'Form not found' });
 
     // Normalize with detailed fields depending on type
     let details = {
       _id: form._id,
       type,
-      service: form.serviceTitle || (type === 'PAN' ? 'PAN Application' : 'Income Certificate'),
+      service: form.serviceTitle || type,
       status: form.status,
       createdAt: form.createdAt,
       user: form.userId ? { name: form.userId.name, email: form.userId.email } : undefined,
-      contactNumber: form.contactNumber || undefined,
-      name: form.name,
-      parentName: form.parentName,
-      aadhar: form.aadhar,
-      address: form.address,
-      email: form.email,
     };
+
     if (type === 'PAN') {
-      details = { ...details, motherName: form.motherName, dob: form.dob, gender: form.gender };
-    } else {
-      details = { ...details, incomeAmount: form.incomeAmount, samagraId: form.samagraId };
+      details = { ...details, name: form.name, parentName: form.parentName, motherName: form.motherName, dob: form.dob, gender: form.gender, contactNumber: form.contactNumber, email: form.email, aadhar: form.aadhar, address: form.address };
+    } else if (type === 'INCOME') {
+      details = { ...details, name: form.name, parentName: form.parentName, incomeAmount: form.incomeAmount, aadhar: form.aadhar, contactNumber: form.contactNumber, samagraId: form.samagraId, email: form.email, address: form.address };
+    } else if (type === 'CASTE') {
+      details = { ...details, name: form.name, fatherName: form.fatherName, motherName: form.motherName, dob: form.dob, gender: form.gender, category: form.category, subCaste: form.subCaste, contactNumber: form.contactNumber, email: form.email, aadhar: form.aadhar, address: form.address, district: form.district, state: form.state, pincode: form.pincode, rationCardNumber: form.rationCardNumber };
+    } else if (type === 'DOMICILE') {
+      details = { ...details, name: form.name, fatherName: form.fatherName, motherName: form.motherName, dob: form.dob, gender: form.gender, contactNumber: form.contactNumber, email: form.email, aadhar: form.aadhar, permanentAddress: form.permanentAddress, currentAddress: form.currentAddress, district: form.district, state: form.state, pincode: form.pincode, yearsOfResidence: form.yearsOfResidence, birthPlace: form.birthPlace, occupation: form.occupation };
+    } else if (type === 'PROPERTY') {
+      details = { ...details, ownerName: form.ownerName, ownerFatherName: form.ownerFatherName, ownerContactNumber: form.ownerContactNumber, ownerEmail: form.ownerEmail, ownerAadhar: form.ownerAadhar, ownerAddress: form.ownerAddress, propertyType: form.propertyType, propertyAddress: form.propertyAddress, propertyDistrict: form.propertyDistrict, propertyState: form.propertyState, propertyPincode: form.propertyPincode, propertyArea: form.propertyArea, propertyAreaUnit: form.propertyAreaUnit, propertyValue: form.propertyValue, transactionType: form.transactionType, buyerName: form.buyerName, buyerContactNumber: form.buyerContactNumber, previousOwnerName: form.previousOwnerName, khataNumber: form.khataNumber, khasraNumber: form.khasraNumber };
     }
 
     return res.json({ form: details });
@@ -183,40 +217,54 @@ exports.changeUserRole = async (req, res) => {
 // GET /api/admin/stats/summary
 exports.getStatsSummary = async (req, res) => {
   try {
-    const [totalUsers, panCount, incomeCount, blockedUsers] = await Promise.all([
+    const [totalUsers, panCount, incomeCount, casteCount, domicileCount, propertyCount, blockedUsers] = await Promise.all([
       User.countDocuments({}),
       PanCardForm.countDocuments({}),
       IncomeCertificateForm.countDocuments({}),
+      CasteCertificateForm.countDocuments({}),
+      DomicileCertificateForm.countDocuments({}),
+      PropertyRegistrationForm.countDocuments({}),
       User.countDocuments({ isBlocked: true }),
     ]);
 
-    let pendingPan = 0, pendingIncome = 0;
-    let successPan = 0, successIncome = 0;
+    let pendingPan = 0, pendingIncome = 0, pendingCaste = 0, pendingDomicile = 0, pendingProperty = 0;
+    let successPan = 0, successIncome = 0, successCaste = 0, successDomicile = 0, successProperty = 0;
     try {
       pendingPan = await PanCardForm.countDocuments({ status: /pending/i });
       pendingIncome = await IncomeCertificateForm.countDocuments({ status: /pending/i });
+      pendingCaste = await CasteCertificateForm.countDocuments({ status: /pending/i });
+      pendingDomicile = await DomicileCertificateForm.countDocuments({ status: /pending/i });
+      pendingProperty = await PropertyRegistrationForm.countDocuments({ status: /pending/i });
       successPan = await PanCardForm.countDocuments({ status: /success|completed|done/i });
       successIncome = await IncomeCertificateForm.countDocuments({ status: /success|completed|done/i });
+      successCaste = await CasteCertificateForm.countDocuments({ status: /success|completed|done/i });
+      successDomicile = await DomicileCertificateForm.countDocuments({ status: /success|completed|done/i });
+      successProperty = await PropertyRegistrationForm.countDocuments({ status: /success|completed|done/i });
     } catch (e) {}
 
-    const totalRequests = panCount + incomeCount;
-    const pendingRequests = (pendingPan || 0) + (pendingIncome || 0);
-    const successCount = (successPan || 0) + (successIncome || 0);
+    const totalRequests = panCount + incomeCount + casteCount + domicileCount + propertyCount;
+    const pendingRequests = (pendingPan || 0) + (pendingIncome || 0) + (pendingCaste || 0) + (pendingDomicile || 0) + (pendingProperty || 0);
+    const successCount = (successPan || 0) + (successIncome || 0) + (successCaste || 0) + (successDomicile || 0) + (successProperty || 0);
 
     // Revenue from payment fields
-    const [panFees, incomeFees] = await Promise.all([
+    const [panFees, incomeFees, casteFees, domicileFees, propertyFees] = await Promise.all([
       PanCardForm.find({ feeAmount: { $gt: 0 } }, { feeAmount: 1, paymentStatus: 1, serviceTitle: 1 }),
       IncomeCertificateForm.find({ feeAmount: { $gt: 0 } }, { feeAmount: 1, paymentStatus: 1, serviceTitle: 1 }),
+      CasteCertificateForm.find({ feeAmount: { $gt: 0 } }, { feeAmount: 1, paymentStatus: 1, serviceTitle: 1 }),
+      DomicileCertificateForm.find({ feeAmount: { $gt: 0 } }, { feeAmount: 1, paymentStatus: 1, serviceTitle: 1 }),
+      PropertyRegistrationForm.find({ feeAmount: { $gt: 0 } }, { feeAmount: 1, paymentStatus: 1, serviceTitle: 1 }),
     ]);
-    const allFees = [...panFees, ...incomeFees];
+    const allFees = [...panFees, ...incomeFees, ...casteFees, ...domicileFees, ...propertyFees];
     const revenueGross = allFees.filter(d => d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0);
     const pendingValue = allFees.filter(d => d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0);
 
     // Top users with pending
-    // Pending breakdown by service (count)
-    const [panPendingDocs, incomePendingDocs] = await Promise.all([
+    const [panPendingDocs, incomePendingDocs, castePendingDocs, domicilePendingDocs, propertyPendingDocs] = await Promise.all([
       PanCardForm.find({ status: /pending/i }, { userId: 1, name: 1, email: 1, serviceTitle: 1, feeAmount: 1 }).populate('userId', 'name email'),
       IncomeCertificateForm.find({ status: /pending/i }, { userId: 1, name: 1, email: 1, serviceTitle: 1, feeAmount: 1 }).populate('userId', 'name email'),
+      CasteCertificateForm.find({ status: /pending/i }, { userId: 1, name: 1, email: 1, serviceTitle: 1, feeAmount: 1 }).populate('userId', 'name email'),
+      DomicileCertificateForm.find({ status: /pending/i }, { userId: 1, name: 1, email: 1, serviceTitle: 1, feeAmount: 1 }).populate('userId', 'name email'),
+      PropertyRegistrationForm.find({ status: /pending/i }, { userId: 1, name: 1, email: 1, serviceTitle: 1, feeAmount: 1 }).populate('userId', 'name email'),
     ]);
 
     const pendingByUserMap = new Map();
@@ -227,7 +275,7 @@ exports.getStatsSummary = async (req, res) => {
       if (!key) return null;
       return { key, name: name || '(Unknown)', email };
     };
-    [...panPendingDocs, ...incomePendingDocs].forEach((d) => {
+    [...panPendingDocs, ...incomePendingDocs, ...castePendingDocs, ...domicilePendingDocs, ...propertyPendingDocs].forEach((d) => {
       const info = collectUserKey(d);
       if (!info) return;
       const prev = pendingByUserMap.get(info.key) || { name: info.name, email: info.email, count: 0 };
@@ -244,27 +292,38 @@ exports.getStatsSummary = async (req, res) => {
       pendingRequests,
       blockedUsers,
       totalOrders: totalRequests,
-      totalRevenue: revenueGross, // backward compatibility
+      totalRevenue: revenueGross,
       successCount,
-      // new enriched stats
       revenue: {
         gross: revenueGross,
         pendingValue,
         byService: {
           pan: {
-            success: panFees.filter(d => (d.serviceTitle || 'PAN Application') === 'PAN Application' && d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0),
-            pending: panFees.filter(d => (d.serviceTitle || 'PAN Application') === 'PAN Application' && d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0),
+            success: panFees.filter(d => d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0),
+            pending: panFees.filter(d => d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0),
           },
           income: {
-            success: incomeFees.filter(d => (d.serviceTitle || 'Income Certificate') === 'Income Certificate' && d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0),
-            pending: incomeFees.filter(d => (d.serviceTitle || 'Income Certificate') === 'Income Certificate' && d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0),
+            success: incomeFees.filter(d => d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0),
+            pending: incomeFees.filter(d => d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0),
+          },
+          caste: {
+            success: casteFees.filter(d => d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0),
+            pending: casteFees.filter(d => d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0),
+          },
+          domicile: {
+            success: domicileFees.filter(d => d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0),
+            pending: domicileFees.filter(d => d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0),
+          },
+          property: {
+            success: propertyFees.filter(d => d.paymentStatus === 'received').reduce((s, d) => s + (d.feeAmount || 0), 0),
+            pending: propertyFees.filter(d => d.paymentStatus === 'pending').reduce((s, d) => s + (d.feeAmount || 0), 0),
           },
         },
         currency: 'INR',
       },
       pending: {
         total: pendingRequests,
-        byService: { pan: pendingPan, income: pendingIncome },
+        byService: { pan: pendingPan, income: pendingIncome, caste: pendingCaste, domicile: pendingDomicile, property: pendingProperty },
         topUsers: topPendingUsers,
       },
     });
@@ -322,17 +381,29 @@ exports.sendNotification = async (req, res) => {
       return res.status(400).json({ message: 'Invalid type. Use "tomorrow" or "delay"' });
     }
 
-    // Try find in PAN first, then Income
+    // Try find in all models
     let form = await PanCardForm.findById(id).populate('userId', 'name email');
     let service = 'PAN Application';
     if (!form) {
       form = await IncomeCertificateForm.findById(id).populate('userId', 'name email');
       service = 'Income Certificate';
     }
+    if (!form) {
+      form = await CasteCertificateForm.findById(id).populate('userId', 'name email');
+      service = 'Caste Certificate';
+    }
+    if (!form) {
+      form = await DomicileCertificateForm.findById(id).populate('userId', 'name email');
+      service = 'Domicile Certificate';
+    }
+    if (!form) {
+      form = await PropertyRegistrationForm.findById(id).populate('userId', 'name email');
+      service = 'Property Registration';
+    }
     if (!form) return res.status(404).json({ message: 'Form not found' });
 
-    const toEmail = form.userId?.email || form.email; // fallback to form email if exists
-    const toName = form.userId?.name || form.name || '';
+    const toEmail = form.userId?.email || form.email || form.ownerEmail;
+    const toName = form.userId?.name || form.name || form.ownerName || '';
     if (!toEmail) return res.status(400).json({ message: 'No recipient email available for this form' });
 
     let subject = 'Update on your request';

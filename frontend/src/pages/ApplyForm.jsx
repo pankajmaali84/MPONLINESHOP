@@ -4,6 +4,7 @@ import axios from "axios";
 import { toast } from "react-hot-toast";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LanguageContext } from "../context/LanguageContext.jsx";
+import { FORM_CONFIGS, getInitialFormState, validateForm } from "../utils/formConfig.js";
 
 const fieldCls =
   "w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition";
@@ -15,86 +16,27 @@ const ApplyForm = () => {
   const location = useLocation();
   const { t } = useContext(LanguageContext);
   const prefillTitle = location.state?.serviceTitle || `${t('service_pan_title')} ${t('application_suffix')}`;
-  const typeParam = new URLSearchParams(location.search).get('type');
-  const isIncome = useMemo(() => {
-    if (typeParam === 'income') return true;
-    if (typeParam === 'pan') return false;
-    return /income certificate/i.test(prefillTitle);
-  }, [typeParam, prefillTitle]);
+  const typeParam = new URLSearchParams(location.search).get('type') || 'pan';
   const isEdit = Boolean(location.state?.edit);
   const editItem = location.state?.editItem;
   const editId = location.state?.id;
 
   const [loading, setLoading] = useState(false);
+  const formConfig = FORM_CONFIGS[typeParam] || FORM_CONFIGS['pan'];
+  
   const initialForm = useMemo(() => {
-    const defaults = {
-      name: "",
-      parentName: "",
-      dob: "",
-      gender: "Male",
-      aadhar: "",
-      contactNumber: "",
-      email: "",
-      address: "",
-      motherName: "",
-      incomeAmount: "",
-      samagraId: "",
-    };
-    if (!isEdit || !editItem) return defaults;
-    if (isIncome) {
-      return {
-        ...defaults,
-        name: editItem.name || "",
-        parentName: editItem.parentName || "",
-        incomeAmount: editItem.incomeAmount ?? "",
-        aadhar: editItem.aadhar || "",
-        contactNumber: editItem.contactNumber || "",
-        samagraId: editItem.samagraId || "",
-      };
-    }
-    // PAN
-    return {
-      ...defaults,
-      name: editItem.name || "",
-      parentName: editItem.parentName || "",
-      motherName: editItem.motherName || "",
-      dob: editItem.dob || "",
-      gender: editItem.gender || "Male",
-      contactNumber: editItem.contactNumber || "",
-      email: editItem.email || "",
-      aadhar: editItem.aadhar || "",
-      address: editItem.address || "",
-    };
-  }, [isEdit, editItem, isIncome]);
+    return getInitialFormState(typeParam, isEdit ? editItem : null);
+  }, [typeParam, isEdit, editItem]);
+  
   const [form, setForm] = useState(initialForm);
+  
   useEffect(() => {
     setForm(initialForm);
   }, [initialForm]);
 
   const disabled = useMemo(() => {
-    if (isIncome) {
-      const incomeOk = Number(form.incomeAmount) >= 35000;
-      const samagraOk = /^[0-9]{8,9}$/.test(String(form.samagraId));
-      return (
-        !form.name ||
-        !form.parentName ||
-        !incomeOk ||
-        !form.aadhar ||
-        !form.contactNumber ||
-        !samagraOk
-      );
-    }
-    return (
-      !form.name ||
-      !form.parentName ||
-      !form.dob ||
-      !form.gender ||
-      !form.aadhar ||
-      !form.contactNumber ||
-      !form.email ||
-      !form.address
-    );
-  }, [form, isIncome]);
+    return !validateForm(typeParam, form);
+  }, [form, typeParam]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -112,32 +54,10 @@ const ApplyForm = () => {
       const token = localStorage.getItem("token");
       const API = import.meta.env.VITE_API_URL || window.location.origin;
       const url = isEdit
-        ? (isIncome ? `${API}/api/income/${editId}` : `${API}/api/pan/${editId}`)
-        : (isIncome ? `${API}/api/income/apply` : `${API}/api/pan/apply`);
+        ? `${API}${formConfig.apiEndpoint}/${editId}`
+        : `${API}${formConfig.apiEndpoint}/apply`;
 
-      const payload = isIncome
-        ? {
-            name: form.name,
-            parentName: form.parentName,
-            incomeAmount: Number(form.incomeAmount),
-            aadhar: form.aadhar,
-            contactNumber: form.contactNumber,
-            samagraId: form.samagraId,
-            serviceTitle: prefillTitle,
-          }
-        : {
-            name: form.name,
-            parentName: form.parentName, // father name (required by backend as parentName)
-            motherName: form.motherName,
-            dob: form.dob,
-            gender: form.gender,
-            contactNumber: form.contactNumber,
-            email: form.email,
-            aadhar: form.aadhar,
-            address: form.address,
-            serviceTitle: prefillTitle,
-          };
-
+      const payload = { ...form, serviceTitle: prefillTitle };
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const res = isEdit
         ? await axios.put(url, payload, config)
@@ -152,6 +72,60 @@ const ApplyForm = () => {
     }
   };
 
+  // Group fields by section for property form
+  const sections = useMemo(() => {
+    const grouped = {};
+    formConfig.fields.forEach(field => {
+      const section = field.section || 'default';
+      if (!grouped[section]) grouped[section] = [];
+      grouped[section].push(field);
+    });
+    return grouped;
+  }, [formConfig]);
+
+  const renderField = (field) => {
+    const commonProps = {
+      name: field.name,
+      value: form[field.name] || '',
+      onChange: handleChange,
+      className: fieldCls,
+      required: field.required,
+    };
+
+    if (field.type === 'textarea') {
+      return (
+        <textarea
+          {...commonProps}
+          placeholder={field.placeholder}
+          rows={field.rows || 3}
+        />
+      );
+    }
+
+    if (field.type === 'select') {
+      return (
+        <select {...commonProps}>
+          {field.options.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+      );
+    }
+
+    return (
+      <input
+        {...commonProps}
+        type={field.type}
+        placeholder={field.placeholder}
+        pattern={field.pattern}
+        minLength={field.minLength}
+        maxLength={field.maxLength}
+        min={field.min}
+        inputMode={field.type === 'tel' || field.type === 'number' ? 'numeric' : undefined}
+      />
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 24, y: 24, scale: 0.99 }}
@@ -160,7 +134,7 @@ const ApplyForm = () => {
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       className="bg-gray-50 dark:bg-gray-900 min-h-screen pt-24 pb-12 px-4 sm:px-6"
     >
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="mb-6 text-center">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
             {prefillTitle}
@@ -174,170 +148,42 @@ const ApplyForm = () => {
           onSubmit={handleSubmit}
           className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-white/5 p-4 sm:p-6 lg:p-8"
         >
-          {/* Responsive grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <div>
-              <label className={labelCls}>{t('full_name')}</label>
-              <input
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder={t('full_name_placeholder')}
-                className={fieldCls}
-                required
-              />
-            </div>
-
-            <div>
-              <label className={labelCls}>{t('fathers_name')}</label>
-              <input
-                name="parentName"
-                value={form.parentName}
-                onChange={handleChange}
-                placeholder={t('fathers_name_placeholder')}
-                className={fieldCls}
-                required
-              />
-            </div>
-
-            {!isIncome && (
-              <div>
-                <label className={labelCls}>{t('mothers_name')}</label>
-                <input
-                  name="motherName"
-                  value={form.motherName}
-                  onChange={handleChange}
-                  placeholder={t('mothers_name_placeholder')}
-                  className={fieldCls}
-                />
+          {Object.keys(sections).length > 1 ? (
+            // Render sections for complex forms like property
+            Object.entries(sections).map(([sectionName, fields]) => (
+              <div key={sectionName} className="mb-6">
+                {sectionName !== 'default' && (
+                  <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400 mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    {sectionName}
+                  </h3>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  {fields.map((field) => (
+                    <div
+                      key={field.name}
+                      className={field.type === 'textarea' ? 'sm:col-span-2' : ''}
+                    >
+                      <label className={labelCls}>{field.label}</label>
+                      {renderField(field)}
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-
-            {!isIncome && (
-              <div>
-                <label className={labelCls}>{t('dob')}</label>
-                <input
-                  type="date"
-                  name="dob"
-                  value={form.dob}
-                  onChange={handleChange}
-                  className={fieldCls}
-                  required
-                />
-              </div>
-            )}
-
-            {!isIncome && (
-              <div>
-                <label className={labelCls}>{t('gender')}</label>
-                <select
-                  name="gender"
-                  value={form.gender}
-                  onChange={handleChange}
-                  className={fieldCls}
-                  required
+            ))
+          ) : (
+            // Simple grid for other forms
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              {formConfig.fields.map((field) => (
+                <div
+                  key={field.name}
+                  className={field.type === 'textarea' ? 'sm:col-span-2' : ''}
                 >
-                  <option>{t('male')}</option>
-                  <option>{t('female')}</option>
-                  <option>{t('other')}</option>
-                </select>
-              </div>
-            )}
-
-            {isIncome && (
-              <div>
-                <label className={labelCls}>{t('income_amount')}</label>
-                <input
-                  type="number"
-                  name="incomeAmount"
-                  value={form.incomeAmount}
-                  onChange={handleChange}
-                  placeholder={t('income_placeholder')}
-                  className={fieldCls}
-                  min={35000}
-                  required
-                />
-              </div>
-            )}
-
-            <div>
-              <label className={labelCls}>{t('aadhar_number')}</label>
-              <input
-                name="aadhar"
-                value={form.aadhar}
-                onChange={handleChange}
-                placeholder={t('aadhar_placeholder')}
-                className={fieldCls}
-                inputMode="numeric"
-                pattern="^[0-9]{12}$"
-                maxLength={12}
-                required
-              />
+                  <label className={labelCls}>{field.label}</label>
+                  {renderField(field)}
+                </div>
+              ))}
             </div>
-
-            <div>
-              <label className={labelCls}>{t('mobile_number')}</label>
-              <input
-                name="contactNumber"
-                value={form.contactNumber}
-                onChange={handleChange}
-                placeholder={t('mobile_placeholder')}
-                className={fieldCls}
-                inputMode="numeric"
-                pattern="^[0-9]{10}$"
-                maxLength={10}
-                required
-              />
-            </div>
-
-            {!isIncome && (
-              <div>
-                <label className={labelCls}>{t('email_label')}</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder={t('email_placeholder')}
-                  className={fieldCls}
-                  required
-                />
-              </div>
-            )}
-
-            {!isIncome && (
-              <div className="sm:col-span-2">
-                <label className={labelCls}>{t('address_label')}</label>
-                <textarea
-                  name="address"
-                  value={form.address}
-                  onChange={handleChange}
-                  placeholder={t('address_placeholder')}
-                  rows={3}
-                  className={fieldCls}
-                  required
-                />
-              </div>
-            )}
-
-            {isIncome && (
-              <div>
-                <label className={labelCls}>{t('samagra_id_label')}</label>
-                <input
-                  name="samagraId"
-                  value={form.samagraId}
-                  onChange={handleChange}
-                  placeholder={t('samagra_id_placeholder')}
-                  className={fieldCls}
-                  inputMode="numeric"
-                  pattern="^[0-9]{8,9}$"
-                  minLength={8}
-                  maxLength={9}
-                  required
-                />
-              </div>
-            )}
-          </div>
+          )}
 
           <div className="mt-6 flex gap-3 justify-end">
             <motion.button
@@ -351,7 +197,7 @@ const ApplyForm = () => {
             </motion.button>
             <motion.button
               type="submit"
-              disabled={loading}
+              disabled={loading || disabled}
               whileHover={{ scale: disabled ? 1 : 1.03 }}
               whileTap={{ scale: disabled ? 1 : 0.98 }}
               className={`px-5 py-2.5 rounded-lg font-semibold text-white shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 bg-gradient-to-r from-blue-600 to-indigo-600 ${

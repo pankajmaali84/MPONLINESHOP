@@ -11,7 +11,7 @@ const RequestedServices = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [items, setItems] = useState([]);
-  const [type, setType] = useState('all'); // all | pan | income
+  const [type, setType] = useState('all'); // all | pan | income | caste | domicile | property
   const [status, setStatus] = useState('all'); // all | submitted | in_review | approved | rejected | success | pending
 
   const API = import.meta.env.VITE_API_URL || window.location.origin;
@@ -24,9 +24,12 @@ const RequestedServices = () => {
       try {
         setLoading(true);
         setError('');
-        const [panRes, incomeRes] = await Promise.all([
+        const [panRes, incomeRes, casteRes, domicileRes, propertyRes] = await Promise.all([
           axios.get(`${API}/api/pan/myAllPan`, authHeader),
           axios.get(`${API}/api/income/myAll`, authHeader),
+          axios.get(`${API}/api/caste/myAll`, authHeader),
+          axios.get(`${API}/api/domicile/myAll`, authHeader),
+          axios.get(`${API}/api/property/myAll`, authHeader),
         ]);
         const pan = (panRes.data?.forms || panRes.data || []).map((f) => ({
           _id: f._id,
@@ -50,7 +53,40 @@ const RequestedServices = () => {
           status: f.status || 'submitted',
           raw: f,
         }));
-        const combined = [...pan, ...income].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        const caste = (casteRes.data?.forms || casteRes.data || []).map((f) => ({
+          _id: f._id,
+          type: 'caste',
+          service: f.serviceTitle || t('service_caste_title'),
+          applicantName: f.name || f.applicantName || '-',
+          contactNumber: f.mobile || f.contactNumber || '-',
+          createdAt: f.createdAt,
+          updatedAt: f.updatedAt,
+          status: f.status || 'submitted',
+          raw: f,
+        }));
+        const domicile = (domicileRes.data?.forms || domicileRes.data || []).map((f) => ({
+          _id: f._id,
+          type: 'domicile',
+          service: f.serviceTitle || t('service_domicile_title'),
+          applicantName: f.name || f.applicantName || '-',
+          contactNumber: f.mobile || f.contactNumber || '-',
+          createdAt: f.createdAt,
+          updatedAt: f.updatedAt,
+          status: f.status || 'submitted',
+          raw: f,
+        }));
+        const property = (propertyRes.data?.forms || propertyRes.data || []).map((f) => ({
+          _id: f._id,
+          type: 'property',
+          service: f.serviceTitle || t('service_property_title'),
+          applicantName: f.ownerName || f.name || f.applicantName || '-',
+          contactNumber: f.ownerContactNumber || f.mobile || f.contactNumber || '-',
+          createdAt: f.createdAt,
+          updatedAt: f.updatedAt,
+          status: f.status || 'submitted',
+          raw: f,
+        }));
+        const combined = [...pan, ...income, ...caste, ...domicile, ...property].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         if (alive) setItems(combined);
       } catch (e) {
         if (alive) setError(e.response?.data?.message || 'Failed to load');
@@ -73,7 +109,14 @@ const RequestedServices = () => {
     const ok = window.confirm('Delete this application?');
     if (!ok) return;
     try {
-      const url = it.type === 'pan' ? `${API}/api/pan/${it._id}` : `${API}/api/income/${it._id}`;
+      const apiMap = {
+        pan: `${API}/api/pan/${it._id}`,
+        income: `${API}/api/income/${it._id}`,
+        caste: `${API}/api/caste/${it._id}`,
+        domicile: `${API}/api/domicile/${it._id}`,
+        property: `${API}/api/property/${it._id}`,
+      };
+      const url = apiMap[it.type] || `${API}/api/pan/${it._id}`;
       await axios.delete(url, authHeader);
       toast.success('Deleted');
       setItems((prev) => prev.filter((x) => x._id !== it._id));
@@ -107,6 +150,9 @@ const RequestedServices = () => {
               <option value="all">All Types</option>
               <option value="pan">{t('type_pan')}</option>
               <option value="income">{t('type_income')}</option>
+              <option value="caste">Caste Certificate</option>
+              <option value="domicile">Domicile Certificate</option>
+              <option value="property">Property Registration</option>
             </select>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
               <option value="all">All Status</option>
